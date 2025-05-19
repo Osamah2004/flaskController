@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Remote Control</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+  <style>
+    .button-container {
+      height: calc(100vh - 120px);
+    }
+  </style>
+</head>
+<body class="bg-gray-900 text-white flex flex-col items-center p-6">
+  <h1 class="text-3xl font-bold mb-4">Remote Control</h1>
+
+  <div class="w-80 bg-gray-800 rounded-lg shadow-lg p-6 space-y-6 flex flex-col items-center">
+    <!-- Navigation Buttons -->
+    <div id="timeButtons" class="grid grid-cols-2 gap-4 w-full button-container">
+      <button onclick="sendControl('prev')" class="bg-gray-700 py-4 px-6 hover:bg-gray-600 rounded-md py-4 text-lg h-full">⏪ Previous</button>
+      <button onclick="sendControl('next')" class="bg-gray-700 py-4 px-6 hover:bg-gray-600 rounded-md py-4 text-lg h-full">Next ⏩</button>
+      <button onclick="sendControl('up')" class="bg-gray-700 py-4 px-6 hover:bg-gray-600 rounded-md py-4 text-lg h-full">⬆️ Up</button>
+      <button onclick="sendControl('down')" class="bg-gray-700 py-4 px-6 hover:bg-gray-600 rounded-md py-4 text-lg h-full">Down ⬇️</button>
+    </div>
+  </div>
+
+  <script>
+    const socket = io();
+
+    function sendControl(action) {
+      console.log('Sending control:', action);
+      socket.emit("control", { action });
+    }
+  </script>
+</body>
+</html>

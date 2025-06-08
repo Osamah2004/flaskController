@@ -89,12 +89,11 @@ or double click the app icon.
 4. Adjust mouse speed using the slider
 
 ### Presentation Control
-1. Browse and filter files by type
-2. Open presentations or documents
-3. Use navigation controls for slides
-4. Access full-screen mode for presentations
-
-[Image: GIF demonstrating presentation control features]
+1. Add necessary files under presentation folder
+2. Browse and filter files by type
+3. Open presentations or documents
+4. Use navigation controls for slides
+5. Access full-screen mode for presentations
 
 ## Security Considerations
 

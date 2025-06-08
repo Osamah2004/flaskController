@@ -1,28 +1,35 @@
-from flask import Flask, jsonify, send_from_directory
+from flask import Flask, send_from_directory
 from flask_socketio import SocketIO, emit
 import os
 import pyautogui
-import webbrowser
-import requests
-from bs4 import BeautifulSoup
+import subprocess
 
 app = Flask(__name__, static_folder="static")
 socketio = SocketIO(app)
 
 # Directory containing videos
-VIDEO_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "videos")
+presentation_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "presentation")
+
+@socketio.on('connect')
+def handle_connect():
+    print("Client connected")
+    emit("getFiles", os.listdir(presentation_dir))
 
 @app.route("/")
 def remote_page():
-    return send_from_directory("static", "remote.html")
+    return send_from_directory("static", "index.html")
 
-@app.route("/navigation")
-def navigation_page():
-    return send_from_directory("static", "navigation.html")
+@app.route("/keyboard")
+def keyboard_page():
+    return send_from_directory("static", "keyboard.html")
 
 @app.route("/presentation")
 def presentation_page():
     return send_from_directory("static", "presentation.html")
+
+@app.route("/mousepad")
+def mousepad_page():
+    return send_from_directory("static", "mousepad.html")
 
 @socketio.on("keyboardInput")
 def keyboardInput(action):
@@ -45,26 +52,14 @@ def keyUp(key):
 
 @socketio.on("hotkey")
 def hotkey(combination):
-    # Split the combination into individual keys
     keys = combination.split('+')
-    # Press all keys in sequence
-    for key in keys:
-        pyautogui.keyDown(key)
-    # Release all keys in reverse order
-    for key in reversed(keys):
-        pyautogui.keyUp(key)
+    pyautogui.hotkey(*keys)
     print(f"Hotkey: {combination}")
     emit("hotkey", broadcast=True)
 
 @socketio.on("deleteLine")
 def deleteLine():
-    pyautogui.press('end')
-    pyautogui.keyDown('shiftleft')
-    pyautogui.keyDown('shiftright')
-    pyautogui.press('home')
-    pyautogui.press('backspace')
-    pyautogui.keyUp('shiftleft')
-    pyautogui.keyUp('shiftright')
+    pyautogui.hotkey('shift','del')
     print("deleteLine")
     # Broadcast the action to all connected clients
     emit("deleteLine", broadcast=True)
@@ -91,27 +86,86 @@ def up():
     # Broadcast the action to all connected clients
     emit("up", broadcast=True)
 
-@socketio.on("down")
-def down():
-    pyautogui.press('down')
-    print("down")
+@socketio.on("backspace")
+def backspace():
+    pyautogui.press('backspace')
+    print("pressed backspace")
+    emit("getFiles",os.listdir(presentation_dir),broadcast=True)
     # Broadcast the action to all connected clients
-    emit("down", broadcast=True)
+    emit("backspace", broadcast=True)
 
-@socketio.on("open_youtube")
-def open_youtube():
-    webbrowser.open("https://www.youtube.com")
-    print("open_youtube")
-    # Broadcast the action to all connected clients
-    emit("open_youtube", broadcast=True)
+@socketio.on("openFile")
+def openFile(fileName):
+    file_path = os.path.join(presentation_dir, fileName)
+    try:
+        os.startfile(file_path)
+        print(f"Opening file: {fileName}")
+        emit("fileOpened", fileName, broadcast=True)
+    except Exception as e:
+        print(f"Error opening file: {e}")
+        emit("fileError", str(e), broadcast=True)
 
-@socketio.on("open_url")
-def open_url(url):
-    response = requests.get(url)
-    soup = BeautifulSoup(response.text, 'html.parser')
-    print(soup.p['title-and-badge'])
-    # Broadcast the action to all connected clients
-    emit("open_url", broadcast=True)
+@socketio.on("closeFile")
+def closeFile():
+    try:
+        pyautogui.hotkey('alt', 'f4')
+        print("Closing current file")
+        emit("fileClosed", broadcast=True)
+    except Exception as e:
+        print(f"Error closing file: {e}")
+        emit("fileError", str(e), broadcast=True)
+
+# Mouse pad event handlers
+@socketio.on("mouseMove")
+def handle_mouse_move(data):
+    deltaX = data.get('deltaX', 0)
+    deltaY = data.get('deltaY', 0)
+    pyautogui.moveRel(deltaX, deltaY)
+    emit("mouseMove", data, broadcast=True)
+
+@socketio.on("mouseClick")
+def handle_mouse_click():
+    print("left click")
+    pyautogui.click()
+    emit("mouseClick", broadcast=True)
+
+@socketio.on("mouseRightClick")
+def handle_mouse_right_click():
+    print("right click")
+    pyautogui.click(button='right')
+    emit("mouseRightClick", broadcast=True)
+
+@socketio.on("mouseMiddleClick")
+def handle_mouse_middle_click():
+    pyautogui.click(button='middle')
+    emit("mouseMiddleClick", broadcast=True)
+
+@socketio.on("mouseDown")
+def handle_mouse_down():
+    pyautogui.mouseDown(button='left')
+    emit("mouseDown", broadcast=True)
+
+@socketio.on("mouseUp")
+def handle_mouse_up():
+    pyautogui.mouseUp(button='left')
+    emit("mouseUp", broadcast=True)
+
+@socketio.on("scrollUp")
+def handle_scroll_up(amount):
+    pyautogui.scroll(amount)
+    emit("scrollUp", amount, broadcast=True)
+
+@socketio.on("scrollDown")
+def handle_scroll_down(amount):
+    pyautogui.scroll(-amount)
+    emit("scrollDown", amount, broadcast=True)
+
+@socketio.on("scroll")
+def handle_scroll(data):
+    delta = data.get('delta', 0)
+    pyautogui.scroll(delta)
+    emit("scroll", data, broadcast=True)
+
 if __name__ == "__main__":
     socketio.run(app, debug=True, host="0.0.0.0", port=5000)
 

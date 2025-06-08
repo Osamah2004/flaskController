@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Remote Control</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+  <style>
+    .nav-link {
+      @apply px-4 py-2 rounded-md transition-colors;
+    }
+    .nav-link.active {
+      @apply bg-gray-700;
+    }
+  </style>
+</head>
+<body class="bg-gray-900 text-white flex flex-col items-center p-6">
+  <!-- Navigation Header -->
+  <div class="w-full max-w-4xl mb-6 bg-gray-800 rounded-lg shadow-lg p-4">
+    <div class="flex justify-center gap-4">
+      <a href="/" class="nav-link active hover:bg-gray-700">Home</a>
+      <a href="/keyboard" class="nav-link hover:bg-gray-700">Keyboard Transfer</a>
+      <a href="/presentation" class="nav-link hover:bg-gray-700">Presentation</a>
+      <a href="/mousepad" class="nav-link hover:bg-gray-700">Mouse Pad</a>
+    </div>
+  </div>
+
+  <h1 class="text-3xl font-bold mb-4">Home Page</h1>
+
+  <div class="w-80 bg-gray-800 rounded-lg shadow-lg p-6 space-y-6 flex flex-col items-center">
+    <div class="grid grid-cols-1 gap-2 w-full">
+      <button onclick="goToNavigation()" class="bg-gray-700 py-2 px-12 hover:bg-gray-600 rounded-md text-lg w-full">Keyboard Transfer</button>
+      <button onclick="goToPresentation()" class="bg-gray-700 py-2 px-12 hover:bg-gray-600 rounded-md text-lg w-full">Presentation</button>
+      <button onclick="goToMousePad()" class="bg-gray-700 py-2 px-12 hover:bg-gray-600 rounded-md text-lg w-full">Mouse Pad</button>
+    </div>
+  </div>
+
+  <script>
+    const socket = io();
+
+    function sendControl(action) {
+      console.log('Sending control:', action);
+      socket.emit(action);
+    }
+
+    function goToNavigation() {
+      location.href = 'keyboard';
+    }
+
+    function goToPresentation() {
+      location.href = 'presentation';
+    }
+
+    function goToMousePad() {
+      location.href = 'mousepad';
+    }
+
+    function openUrl() {
+      const url = document.getElementById('urlInput').value;
+      socket.emit('open_url', url);
+    }
+  </script>
+</body>
+</html>

@@ -1,11 +1,208 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
-</head>
-<body>
-    <h1>Presentation</h1>
-</body>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Remote Control</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+        <style>
+            .nav-link {
+                @apply px-4 py-2 rounded-md transition-colors;
+            }
+            .nav-link.active {
+                @apply bg-gray-700;
+            }
+        </style>
+    </head>
+    <body class="bg-gray-900 text-white flex flex-col items-center p-6">
+        <!-- Navigation Header -->
+        <div class="w-full max-w-4xl mb-6 bg-gray-800 rounded-lg shadow-lg p-4">
+            <div class="flex justify-center gap-4">
+                <a href="/" class="nav-link hover:bg-gray-700">Home</a>
+                <a href="/keyboard" class="nav-link hover:bg-gray-700">Keyboard Transfer</a>
+                <a href="/presentation" class="nav-link active hover:bg-gray-700">Presentation</a>
+                <a href="/mousepad" class="nav-link hover:bg-gray-700">Mouse Pad</a>
+            </div>
+        </div>
+
+        <h1 class="text-3xl font-bold mb-4">Presentation Control</h1>
+        <div class="w-96 bg-gray-800 rounded-lg shadow-lg p-6 space-y-6 flex flex-col items-center">
+            <!-- File Filter Section -->
+            <div id="fileFilterSection" class="w-full">
+                <div class="flex justify-center gap-2 mb-4">
+                    <button onclick="toggle(this)" id="doc" class="px-2 py-1 rounded bg-blue-500 hover:bg-blue-600 text-white transition-colors">doc</button>
+                    <button onclick="toggle(this)" id="pptx" class="px-2 py-1 rounded bg-orange-500 hover:bg-orange-600 text-white transition-colors">pptx</button>
+                    <button onclick="toggle(this)" id="pdf" class="px-2 py-1 rounded bg-red-600 hover:bg-red-700 text-white transition-colors">pdf</button>
+                </div>
+                <div id="tableContainer" class="w-full">
+                    <table id="fileTable" class="w-full">
+                        <thead>
+                            <tr>
+                                <th class="text-left p-2 bg-gray-700">File Name</th>
+                                <th class="text-right p-2 bg-gray-700">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="fileList" class="divide-y divide-gray-600"></tbody>
+                    </table>
+                    <h2 id="noFiles" class="hidden text-gray-400 text-center mt-4">No files found</h2>
+                </div>
+            </div>
+            <!-- File Navigation Section -->
+            <div id="fileNavigationSection" class="hidden w-full space-y-4">
+                <div class="flex justify-between items-center">
+                    <h2 id="currentFileName" class="text-xl font-semibold"></h2>
+                    <button onclick="closeFile()" class="px-2 py-1 bg-red-600 hover:bg-red-700 rounded text-white">Close</button>
+                    <button onclick="back()" class="px-2 py-1 bg-red-600 hover:bg-red-700 rounded text-white">Back</button>
+                    <button onclick="socket.emit('hotkey', 'ctrl+w');" class="px-2 py-1 bg-red-600 hover:bg-red-700 rounded text-white text-sm">Close tab</button>
+                </div>
+                <!-- Common Controls -->
+                <div class="grid grid-cols-1 gap-2">
+                    <button onclick="sendControl('up')" class="bg-gray-700 py-2 hover:bg-gray-600 rounded-md">↑</button>
+                    <button onclick="sendKeyInput('down')" class="bg-gray-700 py-2 hover:bg-gray-600 rounded-md">↓</button>
+                    <button onclick="sendKeyInput('pageup')" class="bg-gray-700 py-2 hover:bg-gray-600 rounded-md">PgUp</button>
+                    <button onclick="sendKeyInput('pagedown')" class="bg-gray-700 py-2 hover:bg-gray-600 rounded-md">PgDn</button>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="sendControl('left')" class="bg-gray-700 py-2 hover:bg-gray-600 rounded-md">←</button>
+                    <button onclick="sendControl('right')" class="bg-gray-700 py-2 hover:bg-gray-600 rounded-md">→</button>
+                </div>
+                <!-- PPTX Specific Controls -->
+                <div id="pptxControls" class="hidden grid grid-cols-2 gap-2">
+                    <button onclick="sendKeyInput('f5')" class="bg-gray-700 py-2 hover:bg-gray-600 rounded-md">Full Screen</button>
+                    <button onclick="sendKeyInput('escape')" class="bg-gray-700 py-2 hover:bg-gray-600 rounded-md">Exit Full Screen</button>
+                </div>
+            </div>
+        </div>
+        <script>
+        const socket = io();
+        let files = [];
+        let currentFile = null;
+
+        function sendControl(action) {
+            console.log('Sending control:', action);
+            socket.emit(action);
+        }
+
+        function sendKeyInput(action) {
+            console.log("Sending key input: ", action)
+            socket.emit("keyboardInput",action)
+        }
+
+        socket.on('connect', () => {
+            console.log('Connected to server');
+        });
+
+        socket.on('getFiles', function(fileList) {
+            console.log("Files received:", fileList);
+            files = fileList;
+            updateFileList();
+        });
+
+        function toggle(button) {
+            console.log('Toggle button:', button.id);
+            button.classList.toggle('activated');
+            if (button.id === 'doc') {
+                button.classList.toggle('bg-blue-700');
+            } else if (button.id === 'pptx') {
+                button.classList.toggle('bg-orange-700');
+            } else if (button.id === 'pdf') {
+                button.classList.toggle('bg-red-700');
+            }
+            updateFileList();
+        }
+
+        function updateFileList() {
+            console.log('Updating file list');
+            console.log('Current files:', files);
+            console.log('Active buttons:', {
+                doc: document.getElementById('doc').classList.contains('activated'),
+                pptx: document.getElementById('pptx').classList.contains('activated'),
+                pdf: document.getElementById('pdf').classList.contains('activated')
+            });
+
+            const fileList = document.getElementById('fileList');
+            const noFiles = document.getElementById('noFiles');
+            fileList.innerHTML = '';
+
+            const activeTypes = [];
+            if (document.getElementById('doc').classList.contains('activated')) activeTypes.push('doc', 'docx');
+            if (document.getElementById('pptx').classList.contains('activated')) activeTypes.push('pptx');
+            if (document.getElementById('pdf').classList.contains('activated')) activeTypes.push('pdf');
+
+            console.log('Active types:', activeTypes);
+
+            const filteredFiles = files.filter(file => {
+                const extension = file.split('.').pop().toLowerCase();
+                return activeTypes.includes(extension);
+            });
+
+            console.log('Filtered files:', filteredFiles);
+
+            if (filteredFiles.length === 0) {
+                noFiles.classList.remove('hidden');
+            } else {
+                noFiles.classList.add('hidden');
+                filteredFiles.forEach(file => {
+                    const row = document.createElement('tr');
+
+                    const nameCell = document.createElement('td');
+                    nameCell.className = 'p-2';
+                    nameCell.textContent = file;
+
+                    const actionCell = document.createElement('td');
+                    actionCell.className = 'p-2 text-right';
+
+                    const openButton = document.createElement('button');
+                    openButton.className = 'px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-white';
+                    openButton.textContent = 'Open';
+                    openButton.onclick = () => openFile(file);
+
+                    actionCell.appendChild(openButton);
+                    row.appendChild(nameCell);
+                    row.appendChild(actionCell);
+                    fileList.appendChild(row);
+                });
+            }
+        }
+
+        function openFile(fileName) {
+            currentFile = fileName;
+            const extension = fileName.split('.').pop().toLowerCase();
+
+            // Show navigation section and hide filter section
+            document.getElementById('fileFilterSection').classList.add('hidden');
+            document.getElementById('fileNavigationSection').classList.remove('hidden');
+            document.getElementById('currentFileName').textContent = fileName;
+
+            // Show/hide PPTX specific controls
+            const pptxControls = document.getElementById('pptxControls');
+            if (extension === 'pptx') {
+                pptxControls.classList.remove('hidden');
+            } else {
+                pptxControls.classList.add('hidden');
+            }
+
+            // Emit open file event
+            socket.emit('openFile', fileName);
+        }
+
+        function back(){
+            currentFile = null;
+            document.getElementById('fileFilterSection').classList.remove('hidden');
+            document.getElementById('fileNavigationSection').classList.add('hidden');
+        }
+
+        function closeFile() {
+            back();
+            socket.emit('closeFile');
+        }
+
+        // Initial table update - wait for files to be loaded
+        socket.on('connect', () => {
+            // Files will be loaded via the getFiles event
+            console.log('Waiting for files...');
+        });
+        </script>
+    </body>
 </html>

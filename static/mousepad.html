@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mouse Pad Control</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <style>
+        #mousePad {
+            touch-action: none;
+            cursor: crosshair;
+        }
+        .button-active {
+            background-color: #4B5563 !important;
+        }
+        .nav-link {
+            @apply px-4 py-2 rounded-md transition-colors;
+        }
+        .nav-link.active {
+            @apply bg-gray-700;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white flex flex-col items-center p-6">
+    <!-- Navigation Header -->
+    <div class="w-full max-w-4xl mb-6 bg-gray-800 rounded-lg shadow-lg p-4">
+        <div class="flex justify-center gap-4">
+            <a href="/" class="nav-link hover:bg-gray-700">Home</a>
+            <a href="/keyboard" class="nav-link hover:bg-gray-700">Keyboard Transfer</a>
+            <a href="/presentation" class="nav-link hover:bg-gray-700">Presentation</a>
+            <a href="/mousepad" class="nav-link active hover:bg-gray-700">Mouse Pad</a>
+        </div>
+    </div>
+
+    <h1 class="text-3xl font-bold mb-4">Mouse Pad Control</h1>
+    
+    <div class="w-full max-w-4xl bg-gray-800 rounded-lg shadow-lg p-6 space-y-6">
+        <!-- Mouse Pad Canvas -->
+        <div class="w-full aspect-[4/3] bg-gray-700 rounded-lg overflow-hidden">
+            <canvas id="mousePad" class="w-full h-full"></canvas>
+        </div>
+
+        <!-- Control Buttons -->
+        <div class="grid grid-cols-1 gap-4">
+            <div class="flex items-center gap-2">
+                <button id="leftClickBtn" class="bg-gray-700 py-2 px-4 hover:bg-gray-600 rounded-md flex-1">Left Click</button>
+                <button id="middleClickBtn" class="bg-gray-700 py-2 px-4 hover:bg-gray-600 rounded-md flex-1">Middle Click</button>
+                <button id="rightClickBtn" class="bg-gray-700 py-2 px-4 hover:bg-gray-600 rounded-md flex-1">Right Click</button>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <button id="holdBtn" class="bg-gray-700 py-2 px-4 hover:bg-gray-600 rounded-md flex-1">Hold</button>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <button id="scrollUpBtn" class="bg-gray-700 py-2 px-4 hover:bg-gray-600 rounded-md flex-1">Scroll Up</button>
+                <input type="number" id="scrollUpAmount" value="10" min="1" max="100" class="w-20 bg-gray-700 rounded px-2 py-1">
+            </div>
+            
+            <div class="flex items-center gap-2">
+                <button id="scrollDownBtn" class="bg-gray-700 py-2 px-4 hover:bg-gray-600 rounded-md flex-1">Scroll Down</button>
+                <input type="number" id="scrollDownAmount" value="10" min="1" max="100" class="w-20 bg-gray-700 rounded px-2 py-1">
+            </div>
+
+            <div class="flex items-center gap-2">
+                <label for="mouseSpeed" class="flex-1">Mouse Speed:</label>
+                <input type="range" id="mouseSpeed" min="1" max="10" value="5" class="flex-1">
+                <span id="mouseSpeedValue" class="w-8 text-center">5</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        const canvas = document.getElementById('mousePad');
+        const ctx = canvas.getContext('2d');
+        let isHolding = false;
+        let lastX = 0;
+        let lastY = 0;
+        let isDragging = false;
+        let mouseSpeed = 5;
+        let touchStartTime = 0;
+        let touchStartX = 0;
+        let touchStartY = 0;
+        const CLICK_THRESHOLD = 200; // milliseconds
+        const MOVE_THRESHOLD = 5; // pixels
+
+        // Set canvas size
+        function resizeCanvas() {
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        // Mouse/Touch event handlers
+        function handleStart(e) {
+            e.preventDefault();
+            const pos = getPosition(e);
+            lastX = pos.x;
+            lastY = pos.y;
+            isDragging = false;
+            touchStartTime = Date.now();
+            touchStartX = pos.x;
+            touchStartY = pos.y;
+        }
+
+        function handleMove(e) {
+            e.preventDefault();
+            const pos = getPosition(e);
+            const deltaX = (pos.x - lastX) * mouseSpeed;
+            const deltaY = (pos.y - lastY) * mouseSpeed;
+
+            // Check if we've moved enough to consider it a drag
+            if (!isDragging) {
+                const dx = pos.x - touchStartX;
+                const dy = pos.y - touchStartY;
+                if (Math.sqrt(dx * dx + dy * dy) > MOVE_THRESHOLD) {
+                    isDragging = true;
+                }
+            }
+
+            if (isDragging) {
+                socket.emit('mouseMove', { deltaX, deltaY });
+            }
+
+            lastX = pos.x;
+            lastY = pos.y;
+        }
+
+        function handleEnd(e) {
+            e.preventDefault();
+            const touchEndTime = Date.now();
+            const touchDuration = touchEndTime - touchStartTime;
+
+            // If it was a short touch and we didn't drag, it's a click
+            if (!isDragging && touchDuration < CLICK_THRESHOLD) {
+                socket.emit('mouseClick');
+            }
+
+            isDragging = false;
+        }
+
+        function getPosition(e) {
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX || e.touches[0].clientX) - rect.left;
+            const y = (e.clientY || e.touches[0].clientY) - rect.top;
+            return { x, y };
+        }
+
+        // Event listeners for mouse
+        canvas.addEventListener('mousedown', handleStart);
+        canvas.addEventListener('mousemove', handleMove);
+        canvas.addEventListener('mouseup', handleEnd);
+        canvas.addEventListener('mouseleave', handleEnd);
+
+        // Event listeners for touch
+        canvas.addEventListener('touchstart', handleStart);
+        canvas.addEventListener('touchmove', handleMove);
+        canvas.addEventListener('touchend', handleEnd);
+
+        // Button handlers
+        document.getElementById('leftClickBtn').addEventListener('click', () => {
+            socket.emit('mouseClick');
+        });
+
+        document.getElementById('rightClickBtn').addEventListener('click', () => {
+            socket.emit('mouseRightClick');
+        });
+
+        document.getElementById('middleClickBtn').addEventListener('click', () => {
+            socket.emit('mouseMiddleClick');
+        });
+
+        const holdBtn = document.getElementById('holdBtn');
+        holdBtn.addEventListener('click', function() {
+            isHolding = !isHolding;
+            this.textContent = isHolding ? 'Release' : 'Hold';
+            this.classList.toggle('button-active');
+            
+            if (isHolding) {
+                socket.emit('mouseDown');
+            } else {
+                socket.emit('mouseUp');
+            }
+        });
+
+        document.getElementById('scrollUpBtn').addEventListener('click', () => {
+            const amount = document.getElementById('scrollUpAmount').value;
+            socket.emit('scrollUp', parseInt(amount));
+        });
+
+        document.getElementById('scrollDownBtn').addEventListener('click', () => {
+            const amount = document.getElementById('scrollDownAmount').value;
+            socket.emit('scrollDown', parseInt(amount));
+        });
+
+        // Mouse speed slider
+        const mouseSpeedSlider = document.getElementById('mouseSpeed');
+        const mouseSpeedValue = document.getElementById('mouseSpeedValue');
+        mouseSpeedSlider.addEventListener('input', function() {
+            mouseSpeed = parseInt(this.value);
+            mouseSpeedValue.textContent = mouseSpeed;
+        });
+
+        // Handle multi-touch gestures
+        let lastTouchDistance = 0;
+        canvas.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 2) {
+                lastTouchDistance = getTouchDistance(e.touches[0], e.touches[1]);
+            }
+        });
+
+        canvas.addEventListener('touchmove', (e) => {
+            if (e.touches.length === 2) {
+                const currentDistance = getTouchDistance(e.touches[0], e.touches[1]);
+                const delta = currentDistance - lastTouchDistance;
+                
+                if (Math.abs(delta) > 10) {
+                    socket.emit('scroll', { delta: Math.sign(delta) * 10 });
+                    lastTouchDistance = currentDistance;
+                }
+            }
+        });
+
+        function getTouchDistance(touch1, touch2) {
+            const dx = touch1.clientX - touch2.clientX;
+            const dy = touch1.clientY - touch2.clientY;
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+    </script>
+</body>
+</html> 

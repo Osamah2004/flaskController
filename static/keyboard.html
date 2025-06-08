@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Keyboard Transfer</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+  <style>
+    .button-container {
+      height: calc(100vh - 120px);
+    }
+    .nav-link {
+      @apply px-4 py-2 rounded-md transition-colors;
+    }
+    .nav-link.active {
+      @apply bg-gray-700;
+    }
+  </style>
+</head>
+<body class="bg-gray-900 text-white flex flex-col items-center p-6">
+  <!-- Navigation Header -->
+  <div class="w-full max-w-4xl mb-6 bg-gray-800 rounded-lg shadow-lg p-4">
+    <div class="flex justify-center gap-4">
+      <a href="/" class="nav-link hover:bg-gray-700">Home</a>
+      <a href="/navigation" class="nav-link active hover:bg-gray-700">Keyboard Transfer</a>
+      <a href="/presentation" class="nav-link hover:bg-gray-700">Presentation</a>
+      <a href="/mousepad" class="nav-link hover:bg-gray-700">Mouse Pad</a>
+    </div>
+  </div>
+
+  <h1 class="text-3xl font-bold mb-4">Keyboard Transfer</h1>
+
+  <div class="w-80 bg-gray-800 rounded-lg shadow-lg p-6 space-y-6 flex flex-col items-center">
+    <div id="horizontalButtons" class="grid grid-cols-1 gap-2 w-full">
+      <button onclick="keyboardInput()" class="bg-gray-700 py-2 px-12 hover:bg-gray-600 rounded-md text-lg w-full">Transfer keyboard</button>
+      <input id="keyboardInput" oninput="sendKeyboardInput(event.target.value)" class="bg-black-100 text-black hidden py-2 rounded-md" type="text" placeholder="Type to the computer.">
+      <button onclick="socket.emit('backspace');" class="bg-gray-700 py-2 px-12 hover:bg-gray-600 rounded-md text-lg w-full">backspace</button>
+      <button onclick="toggleRemap()" class="bg-gray-700 py-2 px-12 hover:bg-gray-600 rounded-md text-lg w-full">remap buttons</button>
+      <button onclick="toggleHotkeyMode()" class="bg-gray-700 py-2 px-12 hover:bg-gray-600 rounded-md text-lg w-full">hotkey mode</button>
+      <button onclick="toggleKeyHoldMode()" class="bg-gray-700 py-2 px-12 hover:bg-gray-600 rounded-md text-lg w-full">key hold mode</button>
+      
+      <div class="grid grid-cols-2 gap-2 w-full remapInput hidden">
+        <label class="text-sm">Backspace:</label>
+        <input oninput="remapButton(event.target.value, 'backspace')" class="bg-black-100 text-black py-2 rounded-md" type="text" placeholder="Remap to..." maxlength="1">
+        
+        <label class="text-sm">Delete Word:</label>
+        <input oninput="remapButton(event.target.value, 'deleteWord')" class="bg-black-100 text-black py-2 rounded-md" type="text" placeholder="Remap to..." maxlength="1">
+        
+        <label class="text-sm">Delete Line:</label>
+        <input oninput="remapButton(event.target.value, 'deleteLine')" class="bg-black-100 text-black py-2 rounded-md" type="text" placeholder="Remap to..." maxlength="1">
+        
+        <label class="text-sm">Tab:</label>
+        <input oninput="remapButton(event.target.value, 'tab')" class="bg-black-100 text-black py-2 rounded-md" type="text" placeholder="Remap to..." maxlength="1">
+        
+        <label class="text-sm">Enter:</label>
+        <input oninput="remapButton(event.target.value, 'enter')" class="bg-black-100 text-black py-2 rounded-md" type="text" placeholder="Remap to..." maxlength="1">
+        
+        <label class="text-sm">Shift:</label>
+        <input oninput="remapButton(event.target.value, 'shift')" class="bg-black-100 text-black py-2 rounded-md" type="text" placeholder="Remap to..." maxlength="1">
+        
+        <label class="text-sm">Ctrl:</label>
+        <input oninput="remapButton(event.target.value, 'ctrl')" class="bg-black-100 text-black py-2 rounded-md" type="text" placeholder="Remap to..." maxlength="1">
+        
+        <label class="text-sm">Alt:</label>
+        <input oninput="remapButton(event.target.value, 'alt')" class="bg-black-100 text-black py-2 rounded-md" type="text" placeholder="Remap to..." maxlength="1">
+        
+        <label class="text-sm">Space:</label>
+        <input oninput="remapButton(event.target.value, 'space')" class="bg-black-100 text-black py-2 rounded-md" type="text" placeholder="Remap to..." maxlength="1">
+        
+        <label class="text-sm">Home:</label>
+        <input oninput="remapButton(event.target.value, 'home')" class="bg-black-100 text-black py-2 rounded-md" type="text" placeholder="Remap to..." maxlength="1">
+        
+        <label class="text-sm">End:</label>
+        <input oninput="remapButton(event.target.value, 'end')" class="bg-black-100 text-black py-2 rounded-md" type="text" placeholder="Remap to..." maxlength="1">
+        
+        <label class="text-sm">Win:</label>
+        <input oninput="remapButton(event.target.value, 'win')" class="bg-black-100 text-black py-2 rounded-md" type="text" placeholder="Remap to..." maxlength="1">
+        
+        <label class="text-sm">Page Up:</label>
+        <input oninput="remapButton(event.target.value, 'pageUp')" class="bg-black-100 text-black py-2 rounded-md" type="text" placeholder="Remap to..." maxlength="1">
+        
+        <label class="text-sm">Page Down:</label>
+        <input oninput="remapButton(event.target.value, 'pageDown')" class="bg-black-100 text-black py-2 rounded-md" type="text" placeholder="Remap to..." maxlength="1">
+        
+        <label class="text-sm">Arrow Up:</label>
+        <input oninput="remapButton(event.target.value, 'up')" class="bg-black-100 text-black py-2 rounded-md" type="text" placeholder="Remap to..." maxlength="1">
+        
+        <label class="text-sm">Arrow Down:</label>
+        <input oninput="remapButton(event.target.value, 'down')" class="bg-black-100 text-black py-2 rounded-md" type="text" placeholder="Remap to..." maxlength="1">
+        
+        <label class="text-sm">Arrow Left:</label>
+        <input oninput="remapButton(event.target.value, 'left')" class="bg-black-100 text-black py-2 rounded-md" type="text" placeholder="Remap to..." maxlength="1">
+        
+        <label class="text-sm">Arrow Right:</label>
+        <input oninput="remapButton(event.target.value, 'right')" class="bg-black-100 text-black py-2 rounded-md" type="text" placeholder="Remap to..." maxlength="1">
+      </div>
+
+      <div class="grid grid-cols-2 gap-2 w-full hotkeyInput hidden">
+        <div class="col-span-2 mb-2">
+          <label class="text-sm">Hotkey Combination:</label>
+          <div class="flex gap-2 mt-1">
+            <input id="hotkeyInput" class="bg-black-100 text-black py-2 rounded-md flex-grow" type="text" placeholder="Type hotkey (e.g., ctrl+c, alt+shift+tab)">
+            <button onclick="addHotkey()" class="bg-gray-700 py-2 px-4 hover:bg-gray-600 rounded-md">Add</button>
+          </div>
+        </div>
+        <div id="hotkeyList" class="col-span-2 grid grid-cols-2 gap-2">
+          <!-- Hotkeys will be added here -->
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2 w-full keyHoldInput hidden">
+        <div class="col-span-2 mb-2">
+          <label class="text-sm">Hold Keys:</label>
+          <div class="flex gap-2 mt-1">
+            <select id="holdKeyInput" class="bg-black-100 text-black py-2 rounded-md flex-grow">
+              <option value="">Select a key...</option>
+              <optgroup label="Modifiers">
+                <option value="ctrl">Ctrl</option>
+                <option value="alt">Alt</option>
+                <option value="shift">Shift</option>
+                <option value="win">Windows</option>
+              </optgroup>
+              <optgroup label="Navigation">
+                <option value="up">Up Arrow</option>
+                <option value="down">Down Arrow</option>
+                <option value="left">Left Arrow</option>
+                <option value="right">Right Arrow</option>
+                <option value="home">Home</option>
+                <option value="end">End</option>
+                <option value="pageup">Page Up</option>
+                <option value="pagedown">Page Down</option>
+              </optgroup>
+              <optgroup label="Function Keys">
+                <option value="f1">F1</option>
+                <option value="f2">F2</option>
+                <option value="f3">F3</option>
+                <option value="f4">F4</option>
+                <option value="f5">F5</option>
+                <option value="f6">F6</option>
+                <option value="f7">F7</option>
+                <option value="f8">F8</option>
+                <option value="f9">F9</option>
+                <option value="f10">F10</option>
+                <option value="f11">F11</option>
+                <option value="f12">F12</option>
+              </optgroup>
+              <optgroup label="Special Keys">
+                <option value="tab">Tab</option>
+                <option value="capslock">Caps Lock</option>
+                <option value="enter">Enter</option>
+                <option value="backspace">Backspace</option>
+                <option value="delete">Delete</option>
+                <option value="insert">Insert</option>
+                <option value="escape">Escape</option>
+                <option value="space">Space</option>
+                <option value="printscreen">Print Screen</option>
+                <option value="scrolllock">Scroll Lock</option>
+                <option value="pause">Pause</option>
+              </optgroup>
+              <optgroup label="Numpad">
+                <option value="num0">Numpad 0</option>
+                <option value="num1">Numpad 1</option>
+                <option value="num2">Numpad 2</option>
+                <option value="num3">Numpad 3</option>
+                <option value="num4">Numpad 4</option>
+                <option value="num5">Numpad 5</option>
+                <option value="num6">Numpad 6</option>
+                <option value="num7">Numpad 7</option>
+                <option value="num8">Numpad 8</option>
+                <option value="num9">Numpad 9</option>
+                <option value="numadd">Numpad +</option>
+                <option value="numsubtract">Numpad -</option>
+                <option value="nummultiply">Numpad *</option>
+                <option value="numdivide">Numpad /</option>
+                <option value="numdecimal">Numpad .</option>
+                <option value="numlock">Num Lock</option>
+              </optgroup>
+            </select>
+            <button onclick="addHoldKey()" class="bg-gray-700 py-2 px-4 hover:bg-gray-600 rounded-md">Add</button>
+          </div>
+        </div>
+        <div id="holdKeyList" class="col-span-2 grid grid-cols-2 gap-2">
+          <!-- Hold keys will be added here -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const socket = io();
+    let buttonsMap = JSON.parse(localStorage.getItem('buttonsMap')) || {};
+    let hotkeys = JSON.parse(localStorage.getItem('hotkeys')) || {};
+    let holdKeys = JSON.parse(localStorage.getItem('holdKeys')) || {};
+    let isHotkeyMode = false;
+    let isKeyHoldMode = false;
+
+    // Load saved data on page load
+    window.addEventListener('load', () => {
+      updateHotkeyList();
+      updateHoldKeyList();
+    });
+
+    function toggleHotkeyMode() {
+      isHotkeyMode = !isHotkeyMode;
+      isKeyHoldMode = false;
+      document.querySelector('.hotkeyInput').classList.toggle('hidden');
+      document.querySelector('.keyHoldInput').classList.add('hidden');
+      document.querySelector('.remapInput').classList.add('hidden');
+    }
+
+    function toggleKeyHoldMode() {
+      isKeyHoldMode = !isKeyHoldMode;
+      isHotkeyMode = false;
+      document.querySelector('.keyHoldInput').classList.toggle('hidden');
+      document.querySelector('.hotkeyInput').classList.add('hidden');
+      document.querySelector('.remapInput').classList.add('hidden');
+    }
+
+    function toggleRemap() {
+      isHotkeyMode = false;
+      isKeyHoldMode = false;
+      document.querySelector('.remapInput').classList.toggle('hidden');
+      document.querySelector('.hotkeyInput').classList.add('hidden');
+      document.querySelector('.keyHoldInput').classList.add('hidden');
+    }
+
+    function addHotkey() {
+      const input = document.getElementById('hotkeyInput');
+      const hotkey = input.value.trim().toLowerCase();
+      if (hotkey) {
+        const hotkeyId = 'hotkey_' + Object.keys(hotkeys).length;
+        hotkeys[hotkeyId] = hotkey;
+        localStorage.setItem('hotkeys', JSON.stringify(hotkeys));
+        updateHotkeyList();
+        input.value = '';
+      }
+    }
+
+    function addHoldKey() {
+      const select = document.getElementById('holdKeyInput');
+      const key = select.value;
+      if (key) {
+        const holdKeyId = 'holdkey_' + Object.keys(holdKeys).length;
+        holdKeys[holdKeyId] = {
+          key: key,
+          isHeld: false
+        };
+        localStorage.setItem('holdKeys', JSON.stringify(holdKeys));
+        updateHoldKeyList();
+        select.value = '';
+      }
+    }
+
+    function updateHotkeyList() {
+      const container = document.getElementById('hotkeyList');
+      container.innerHTML = '';
+      Object.entries(hotkeys).forEach(([id, hotkey]) => {
+        const div = document.createElement('div');
+        div.className = 'col-span-2 flex gap-2 items-center';
+        div.innerHTML = `
+          <span class="text-sm flex-grow">${hotkey}</span>
+          <button onclick="removeHotkey('${id}')" class="bg-red-700 py-1 px-2 hover:bg-red-600 rounded-md text-sm">Remove</button>
+          <button onclick="sendHotkey('${id}')" class="bg-green-700 py-1 px-2 hover:bg-green-600 rounded-md text-sm">Press</button>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function updateHoldKeyList() {
+      const container = document.getElementById('holdKeyList');
+      container.innerHTML = '';
+      Object.entries(holdKeys).forEach(([id, data]) => {
+        const div = document.createElement('div');
+        div.className = 'col-span-2 flex gap-2 items-center';
+        div.innerHTML = `
+          <span class="text-sm flex-grow">${data.key}</span>
+          <button onclick="toggleHoldKey('${id}')" class="bg-${data.isHeld ? 'green' : 'gray'}-700 py-1 px-2 hover:bg-${data.isHeld ? 'green' : 'gray'}-600 rounded-md text-sm">
+            ${data.isHeld ? 'Release' : 'Hold'}
+          </button>
+          <button onclick="removeHoldKey('${id}')" class="bg-red-700 py-1 px-2 hover:bg-red-600 rounded-md text-sm">Remove</button>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function sendHotkey(id){
+      socket.emit('hotkey',hotkeys[id])
+    }
+
+    function removeHotkey(id) {
+      delete hotkeys[id];
+      localStorage.setItem('hotkeys', JSON.stringify(hotkeys));
+      updateHotkeyList();
+    }
+
+    function removeHoldKey(id) {
+      if (holdKeys[id].isHeld) {
+        socket.emit('keyUp', holdKeys[id].key);
+      }
+      delete holdKeys[id];
+      localStorage.setItem('holdKeys', JSON.stringify(holdKeys));
+      updateHoldKeyList();
+    }
+
+    function toggleHoldKey(id) {
+      const keyData = holdKeys[id];
+      keyData.isHeld = !keyData.isHeld;
+      socket.emit(keyData.isHeld ? 'keyDown' : 'keyUp', keyData.key);
+      localStorage.setItem('holdKeys', JSON.stringify(holdKeys));
+      updateHoldKeyList();
+    }
+
+    function remapButton(key, button) {
+      buttonsMap[key] = button;
+      localStorage.setItem('buttonsMap', JSON.stringify(buttonsMap));
+      console.log(buttonsMap);
+    }
+
+    function sendKeyboardInput(action) {
+      document.getElementById('keyboardInput').value = '';
+      console.log(action)
+      if (buttonsMap[action]) {
+        socket.emit('keyboardInput', buttonsMap[action]);
+      } else {
+        socket.emit('keyboardInput', action);
+      }
+    }
+
+    function keyboardInput() {
+      document.getElementById('keyboardInput').classList.toggle('hidden');
+    }
+  </script>
+</body>
+</html>

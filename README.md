@@ -59,13 +59,13 @@ pip install pyautogui
 2. Clone the repository:
 ```bash
 git clone https://github.com/Osamah2004/flaskController.git
-cd flaskController
 ```
 
 3. Run the application:
 ```bash
 python app.py
 ```
+or double click the app icon.
 
 4. Access the application:
    - Open your web browser
